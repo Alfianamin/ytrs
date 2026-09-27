@@ -1,9 +1,7 @@
 {
   "enabled": true,
-  "expires_at": "2026-12-01T23:59:59Z",
+  "expires_at": "2026-12-31T23:59:59Z",
   "package_name": "com.dbzbanten.adpinger",
   "min_version_code": 1,
-  "signature_sha256": "42:89:F5:33:16:8C:75:CF:0C:B5:9A:31:B7:32:A4:32:6D:E5:CC:E2:9D:70:88:06:DA:FE:75:A7:B7:03:2C:F4",
-  "message": "Masa berlaku aplikasi telah berakhir. Silakan dm DBZBANTEN untuk menggunakan AdPinger."
+  "signature_sha256": "42:89:F5:33:16:8C:75:CF:0C:B5:9A:31:B7:32:A4:32:6D:E5:CC:E2:9D:70:88:06:DA:FE:75:A7:B7:03:2C:F4"
 }
-

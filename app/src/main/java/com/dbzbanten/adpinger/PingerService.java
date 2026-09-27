@@ -124,7 +124,11 @@ public class PingerService extends Service {
                 return START_NOT_STICKY;
             }
         } catch (Exception e) {
-            writeLog("SERVICE BLOCKED: LICENSE CHECK FAILED " + e.getMessage());
+            String detail = e.getMessage();
+            if (detail == null || detail.trim().isEmpty()) {
+                detail = e.getClass().getSimpleName();
+            }
+            writeLog("SERVICE BLOCKED: LICENSE CHECK FAILED " + detail);
             updateNotification("Lisensi tidak dapat diverifikasi");
             getSharedPreferences(PREF, MODE_PRIVATE).edit()
                     .putBoolean("enabled", false).remove(PENDING_URL).apply();
@@ -194,7 +198,11 @@ public class PingerService extends Service {
                 return;
             }
         } catch (Exception e) {
-            writeLog("AUTO STOP: LICENSE CHECK FAILED " + e.getMessage());
+            String detail = e.getMessage();
+            if (detail == null || detail.trim().isEmpty()) {
+                detail = e.getClass().getSimpleName();
+            }
+            writeLog("AUTO STOP: LICENSE CHECK FAILED " + detail);
             running = false;
             stopScheduler();
             getSharedPreferences(PREF, MODE_PRIVATE).edit()
