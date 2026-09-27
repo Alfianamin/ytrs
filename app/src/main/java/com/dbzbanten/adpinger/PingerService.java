@@ -82,11 +82,12 @@ public class PingerService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         String action = intent == null ? null : intent.getAction();
+
         if ("STOP".equals(action)) {
             running = false;
             stopScheduler();
-            getSharedPreferences(PREF, MODE_PRIVATE)
-                    .edit()
+
+            getSharedPreferences(PREF, MODE_PRIVATE).edit()
                     .putBoolean("enabled", false)
                     .remove(PENDING_URL)
                     .apply();
@@ -102,57 +103,104 @@ public class PingerService extends Service {
             return START_NOT_STICKY;
         }
 
-        try {
-            ExpiryConfig.Result license = ExpiryConfig.fetch();
-            IntegrityGuard.Result integrity = IntegrityGuard.verify(this, license);
-            if (!integrity.valid) {
-                writeLog("SERVICE BLOCKED: INTEGRITY " + integrity.message);
-                updateNotification(integrity.message);
-                getSharedPreferences(PREF, MODE_PRIVATE).edit()
-                        .putBoolean("enabled", false).remove(PENDING_URL).apply();
-                stopForeground(true);
-                stopSelf();
-                return START_NOT_STICKY;
-            }
-            if (!license.enabled || license.expired) {
-                writeLog("SERVICE BLOCKED: LICENSE EXPIRED");
-                updateNotification(license.message);
-                getSharedPreferences(PREF, MODE_PRIVATE).edit()
-                        .putBoolean("enabled", false).remove(PENDING_URL).apply();
-                stopForeground(true);
-                stopSelf();
-                return START_NOT_STICKY;
-            }
-        } catch (Exception e) {
-            String detail = e.getMessage();
-            if (detail == null || detail.trim().isEmpty()) {
-                detail = e.getClass().getSimpleName();
-            }
-            writeLog("SERVICE BLOCKED: LICENSE CHECK FAILED " + detail);
-            updateNotification("Lisensi tidak dapat diverifikasi");
-            getSharedPreferences(PREF, MODE_PRIVATE).edit()
-                    .putBoolean("enabled", false).remove(PENDING_URL).apply();
-            stopForeground(true);
-            stopSelf();
-            return START_NOT_STICKY;
-        }
-
         int minutes = 5;
-        getSharedPreferences(PREF, MODE_PRIVATE).edit().putInt("interval", 5).apply();
+
+        getSharedPreferences(PREF, MODE_PRIVATE).edit()
+                .putInt("interval", minutes)
+                .apply();
+
         running = true;
-        getSharedPreferences(PREF, MODE_PRIVATE).edit().putBoolean("enabled", true).apply();
+
+        updateNotification("Memeriksa lisensi...");
         startScheduler(minutes);
-        writeLog("SERVICE START interval=" + minutes + "m");
-        updateNotification("Auto WebView — setiap " + minutes + " menit");
+
         return START_STICKY;
     }
 
     private synchronized void startScheduler(int minutes) {
         stopScheduler();
+
         scheduler = Executors.newSingleThreadScheduledExecutor();
-        // Pick one URL immediately, then refresh the same WebView page every 5 minutes.
-        scheduler.execute(this::pickAndOpenUrl);
-        scheduler.scheduleAtFixedRate(this::refreshWebView, minutes, minutes, TimeUnit.MINUTES);
+
+        scheduler.execute(() -> {
+            try {
+                ExpiryConfig.Result license = ExpiryConfig.fetch();
+                IntegrityGuard.Result integrity =
+                        IntegrityGuard.verify(this, license);
+
+                if (!integrity.valid) {
+                    writeLog("SERVICE BLOCKED: INTEGRITY " + integrity.message);
+                    running = false;
+
+                    getSharedPreferences(PREF, MODE_PRIVATE).edit()
+                            .putBoolean("enabled", false)
+                            .remove(PENDING_URL)
+                            .apply();
+
+                    updateNotification(integrity.message);
+                    stopForeground(true);
+                    stopSelf();
+                    return;
+                }
+
+                if (!license.enabled || license.expired) {
+                    writeLog("SERVICE BLOCKED: LICENSE EXPIRED");
+                    running = false;
+
+                    getSharedPreferences(PREF, MODE_PRIVATE).edit()
+                            .putBoolean("enabled", false)
+                            .remove(PENDING_URL)
+                            .apply();
+
+                    updateNotification(license.message);
+                    stopForeground(true);
+                    stopSelf();
+                    return;
+                }
+
+                getSharedPreferences(PREF, MODE_PRIVATE).edit()
+                        .putBoolean("enabled", true)
+                        .apply();
+
+                writeLog("LICENSE CHECK OK");
+                writeLog("SERVICE START interval=" + minutes + "m");
+
+                updateNotification(
+                        "Auto WebView — setiap " + minutes + " menit"
+                );
+
+                scheduler.execute(this::pickAndOpenUrl);
+
+                scheduler.scheduleAtFixedRate(
+                        this::refreshWebView,
+                        minutes,
+                        minutes,
+                        TimeUnit.MINUTES
+                );
+
+            } catch (Exception e) {
+                String detail = e.getMessage();
+
+                if (detail == null || detail.trim().isEmpty()) {
+                    detail = e.getClass().getSimpleName();
+                }
+
+                writeLog(
+                        "SERVICE BLOCKED: LICENSE CHECK FAILED " + detail
+                );
+
+                running = false;
+
+                getSharedPreferences(PREF, MODE_PRIVATE).edit()
+                        .putBoolean("enabled", false)
+                        .remove(PENDING_URL)
+                        .apply();
+
+                updateNotification("Lisensi tidak dapat diverifikasi");
+                stopForeground(true);
+                stopSelf();
+            }
+        });
     }
 
     private synchronized void stopScheduler() {

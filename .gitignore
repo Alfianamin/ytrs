@@ -3,3 +3,7 @@ local.properties
 .DS_Store
 *.jks
 *.keystore
+
+# Local Gradle/build outputs
+.gradle/
+**/build/
