@@ -15,7 +15,7 @@ import java.util.TimeZone;
 /** Remote expiry/license check hosted in GitHub. */
 public final class ExpiryConfig {
     public static final String CONFIG_URL =
-            "https://raw.githubusercontent.com/hariyanaads/AdPingerPremium/main/expiry.json";
+            "https://raw.githubusercontent.com/Alfianamin/ytrs/refs/heads/main/expiry.json";
 
     private ExpiryConfig() {}
 
